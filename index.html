@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Miner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        .mining-active {
+            animation: pulse 2s infinite;
+        }
+        .fan-blades {
+            animation: spin 4s linear infinite;
+        }
+        .mining-active .fan-blades {
+            animation: spin 1s linear infinite;
+        }
+        .glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        .mining-active .glow {
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8 flex flex-col flex-grow">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-blue-400">POWER MINER</h1>
+            <div class="flex items-center space-x-2">
+                <span id="battery-level" class="text-sm"></span>
+                <i id="battery-icon" class="fas fa-battery-full text-green-400"></i>
+            </div>
+        </header>
+
+        <!-- Mining Status -->
+        <div id="mining-status" class="bg-gray-800 rounded-lg p-4 mb-6 text-center hidden">
+            <p class="text-red-400"><i class="fas fa-plug mr-2"></i>Connect your device to power to resume mining.</p>
+        </div>
+
+        <!-- Mining Display -->
+        <div class="flex-grow flex flex-col items-center justify-center mb-8">
+            <!-- Mining Fan -->
+            <div id="mining-fan" class="relative w-48 h-48 mb-8 flex items-center justify-center">
+                <div class="absolute w-full h-full rounded-full bg-gray-800 glow"></div>
+                <div class="absolute w-40 h-40 rounded-full bg-gray-700"></div>
+                <div class="fan-blades absolute w-36 h-36 rounded-full flex items-center justify-center">
+                    <div class="absolute w-36 h-2 bg-blue-400"></div>
+                    <div class="absolute w-36 h-2 bg-blue-400 transform rotate-45"></div>
+                    <div class="absolute w-36 h-2 bg-blue-400 transform rotate-90"></div>
+                    <div class="absolute w-36 h-2 bg-blue-400 transform rotate-135"></div>
+                </div>
+                <div class="absolute w-16 h-16 rounded-full bg-gray-900"></div>
+                <div class="absolute w-12 h-12 rounded-full bg-blue-500"></div>
+            </div>
+
+            <!-- Mining Stats -->
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-bold text-blue-400 mb-2" id="mined-amount">0 TON</h2>
+                <p class="text-gray-400" id="mining-speed">0 H/s</p>
+            </div>
+
+            <!-- Mining Button -->
+            <button id="claim-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full mb-4 transition-colors">
+                CLAIM REWARDS
+            </button>
+        </div>
+
+        <!-- Boost Section -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-2">Power Boost</h3>
+            <div class="grid grid-cols-3 gap-2">
+                <button class="boost-btn bg-gray-700 hover:bg-gray-600 py-2 px-2 rounded" data-multiplier="1.5" data-cost="100">
+                    <div class="text-xs text-blue-400">+50%</div>
+                    <div class="text-xs">100 TON</div>
+                </button>
+                <button class="boost-btn bg-gray-700 hover:bg-gray-600 py-2 px-2 rounded" data-multiplier="2" data-cost="500">
+                    <div class="text-xs text-blue-400">+100%</div>
+                    <div class="text-xs">500 TON</div>
+                </button>
+                <button class="boost-btn bg-gray-700 hover:bg-gray-600 py-2 px-2 rounded" data-multiplier="3" data-cost="2000">
+                    <div class="text-xs text-blue-400">+200%</div>
+                    <div class="text-xs">2000 TON</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="bg-gray-800 rounded-lg p-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-400 text-sm">Total Mined</p>
+                    <p class="font-semibold" id="total-mined">0 TON</p>
+                </div>
+                <div>
+                    <p class="text-gray-400 text-sm">Mining Multiplier</p>
+                    <p class="font-semibold" id="mining-multiplier">1x</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Settings</h3>
+                <button id="close-settings" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2">Sound Effects</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="sound-toggle" class="mr-2">
+                        <span id="sound-status">On</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Reset Progress</label>
+                    <button id="reset-btn" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded">
+                        Reset Game
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Button -->
+    <button id="settings-btn" class="fixed bottom-4 right-4 bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full shadow-lg">
+        <i class="fas fa-cog"></i>
+    </button>
+
+    <script>
+        // Game state
+        const gameState = {
+            minedAmount: 0,
+            totalMined: 0,
+            miningMultiplier: 1,
+            miningSpeed: 1, // Base speed
+            isMining: false,
+            soundEnabled: true,
+            lastUpdate: Date.now()
+        };
+
+        // DOM elements
+        const elements = {
+            minedAmount: document.getElementById('mined-amount'),
+            totalMined: document.getElementById('total-mined'),
+            miningSpeed: document.getElementById('mining-speed'),
+            miningMultiplier: document.getElementById('mining-multiplier'),
+            miningStatus: document.getElementById('mining-status'),
+            miningFan: document.getElementById('mining-fan'),
+            claimBtn: document.getElementById('claim-btn'),
+            boostBtns: document.querySelectorAll('.boost-btn'),
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsModal: document.getElementById('settings-modal'),
+            closeSettings: document.getElementById('close-settings'),
+            soundToggle: document.getElementById('sound-toggle'),
+            soundStatus: document.getElementById('sound-status'),
+            resetBtn: document.getElementById('reset-btn'),
+            batteryLevel: document.getElementById('battery-level'),
+            batteryIcon: document.getElementById('battery-icon')
+        };
+
+        // Audio elements
+        const audio = {
+            miningSound: new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...'), // Short fan sound
+            claimSound: new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...') // Coin sound
+        };
+
+        // Initialize game
+        function initGame() {
+            loadGame();
+            updateUI();
+            setupBatteryListener();
+            setupEventListeners();
+            checkChargingStatus();
+            
+            // Start game loop
+            setInterval(gameLoop, 100);
+        }
+
+        // Game loop
+        function gameLoop() {
+            const now = Date.now();
+            const deltaTime = (now - gameState.lastUpdate) / 1000; // Convert to seconds
+            
+            if (gameState.isMining) {
+                // Calculate mining based on time passed
+                const mined = gameState.miningSpeed * gameState.miningMultiplier * deltaTime;
+                gameState.minedAmount += mined;
+                gameState.totalMined += mined;
+                
+                // Play mining sound if enabled
+                if (gameState.soundEnabled && !audio.miningSound.playing) {
+                    audio.miningSound.loop = true;
+                    audio.miningSound.play().catch(e => console.log("Audio play failed:", e));
+                }
+            } else {
+                // Stop mining sound if not mining
+                if (audio.miningSound.playing) {
+                    audio.miningSound.pause();
+                    audio.miningSound.currentTime = 0;
+                }
+            }
+            
+            gameState.lastUpdate = now;
+            updateUI();
+            saveGame();
+        }
+
+        // Update UI
+        function updateUI() {
+            // Update mined amounts
+            elements.minedAmount.textContent = `${formatNumber(gameState.minedAmount)} TON`;
+            elements.totalMined.textContent = `${formatNumber(gameState.totalMined)} TON`;
+            
+            // Update mining speed
+            const speed = gameState.miningSpeed * gameState.miningMultiplier;
+            elements.miningSpeed.textContent = `${formatHashRate(speed)}`;
+            
+            // Update multiplier
+            elements.miningMultiplier.textContent = `${gameState.miningMultiplier.toFixed(1)}x`;
+            
+            // Update sound status
+            elements.soundStatus.textContent = gameState.soundEnabled ? 'On' : 'Off';
+            elements.soundToggle.checked = gameState.soundEnabled;
+        }
+
+        // Check charging status
+        function checkChargingStatus() {
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    updateBatteryUI(battery);
+                    
+                    battery.addEventListener('chargingchange', () => {
+                        updateBatteryUI(battery);
+                        toggleMining(battery.charging);
+                    });
+                    
+                    battery.addEventListener('levelchange', () => {
+                        updateBatteryUI(battery);
+                    });
+                });
+            } else {
+                // Fallback for browsers that don't support Battery API
+                elements.batteryLevel.textContent = "100%";
+                toggleMining(true); // Assume charging for demo purposes
+            }
+        }
+
+        // Update battery UI
+        function updateBatteryUI(battery) {
+            const level = Math.round(battery.level * 100);
+            elements.batteryLevel.textContent = `${level}%`;
+            
+            // Set battery icon based on level and charging status
+            let iconClass;
+            if (battery.charging) {
+                iconClass = 'fa-bolt';
+            } else {
+                if (level >= 80) iconClass = 'fa-battery-full';
+                else if (level >= 60) iconClass = 'fa-battery-three-quarters';
+                else if (level >= 40) iconClass = 'fa-battery-half';
+                else if (level >= 20) iconClass = 'fa-battery-quarter';
+                else iconClass = 'fa-battery-empty';
+            }
+            
+            // Set color based on level
+            let colorClass;
+            if (battery.charging) {
+                colorClass = 'text-green-400';
+            } else {
+                if (level >= 50) colorClass = 'text-green-400';
+                else if (level >= 20) colorClass = 'text-yellow-400';
+                else colorClass = 'text-red-400';
+            }
+            
+            elements.batteryIcon.className = `fas ${iconClass} ${colorClass}`;
+        }
+
+        // Toggle mining state
+        function toggleMining(isCharging) {
+            gameState.isMining = isCharging;
+            
+            if (isCharging) {
+                elements.miningStatus.classList.add('hidden');
+                elements.miningFan.classList.add('mining-active');
+                gameState.lastUpdate = Date.now(); // Reset timer when mining starts
+            } else {
+                elements.miningStatus.classList.remove('hidden');
+                elements.miningFan.classList.remove('mining-active');
+            }
+        }
+
+        // Claim mined amount
+        function claimRewards() {
+            if (gameState.minedAmount > 0) {
+                if (gameState.soundEnabled) {
+                    audio.claimSound.play().catch(e => console.log("Audio play failed:", e));
+                }
+                gameState.minedAmount = 0;
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Purchase boost
+        function purchaseBoost(multiplier, cost) {
+            if (gameState.totalMined >= cost) {
+                gameState.totalMined -= cost;
+                gameState.miningMultiplier = multiplier;
+                updateUI();
+                saveGame();
+                
+                // Visual feedback
+                elements.miningFan.classList.add('glow');
+                setTimeout(() => {
+                    elements.miningFan.classList.remove('glow');
+                }, 1000);
+            }
+        }
+
+        // Toggle sound
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            updateUI();
+            saveGame();
+        }
+
+        // Reset game
+        function resetGame() {
+            if (confirm("Are you sure you want to reset your progress? This cannot be undone.")) {
+                gameState.minedAmount = 0;
+                gameState.totalMined = 0;
+                gameState.miningMultiplier = 1;
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Save game to localStorage
+        function saveGame() {
+            localStorage.setItem('powerMinerSave', JSON.stringify({
+                minedAmount: gameState.minedAmount,
+                totalMined: gameState.totalMined,
+                miningMultiplier: gameState.miningMultiplier,
+                soundEnabled: gameState.soundEnabled
+            }));
+        }
+
+        // Load game from localStorage
+        function loadGame() {
+            const saveData = localStorage.getItem('powerMinerSave');
+            if (saveData) {
+                const parsed = JSON.parse(saveData);
+                gameState.minedAmount = parsed.minedAmount || 0;
+                gameState.totalMined = parsed.totalMined || 0;
+                gameState.miningMultiplier = parsed.miningMultiplier || 1;
+                gameState.soundEnabled = parsed.soundEnabled !== undefined ? parsed.soundEnabled : true;
+            }
+        }
+
+        // Format number with commas
+        function formatNumber(num) {
+            return Math.floor(num).toLocaleString();
+        }
+
+        // Format hash rate
+        function formatHashRate(rate) {
+            if (rate >= 1000000000) {
+                return `${(rate / 1000000000).toFixed(2)} GH/s`;
+            } else if (rate >= 1000000) {
+                return `${(rate / 1000000).toFixed(2)} MH/s`;
+            } else if (rate >= 1000) {
+                return `${(rate / 1000).toFixed(2)} KH/s`;
+            } else {
+                return `${rate.toFixed(2)} H/s`;
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Claim button
+            elements.claimBtn.addEventListener('click', claimRewards);
+            
+            // Boost buttons
+            elements.boostBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const multiplier = parseFloat(btn.dataset.multiplier);
+                    const cost = parseFloat(btn.dataset.cost);
+                    purchaseBoost(multiplier, cost);
+                });
+            });
+            
+            // Settings button
+            elements.settingsBtn.addEventListener('click', () => {
+                elements.settingsModal.classList.remove('hidden');
+            });
+            
+            // Close settings
+            elements.closeSettings.addEventListener('click', () => {
+                elements.settingsModal.classList.add('hidden');
+            });
+            
+            // Sound toggle
+            elements.soundToggle.addEventListener('change', toggleSound);
+            
+            // Reset button
+            elements.resetBtn.addEventListener('click', resetGame);
+        }
+
+        // Setup battery listener fallback
+        function setupBatteryListener() {
+            if (!('getBattery' in navigator)) {
+                // Simulate charging for demo purposes
+                setInterval(() => {
+                    toggleMining(true);
+                }, 1000);
+            }
+        }
+
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
